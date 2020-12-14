@@ -1,1 +1,1 @@
-# eee443-project
+# EEE 443 Neural Networks Image Captioning Project
