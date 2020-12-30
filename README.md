@@ -5,3 +5,8 @@
 * https://towardsdatascience.com/image-captioning-with-keras-teaching-computers-to-describe-pictures-c88a46a311b8
 * https://machinelearningmastery.com/develop-a-deep-learning-caption-generation-model-in-python/
 * https://github.com/LuoweiZhou/VLP
+* https://github.com/ruotianluo/ImageCaptioning.pytorch
+* https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Image-Captioning
+
+Nice optimizer:
+* https://github.com/davda54/sam
