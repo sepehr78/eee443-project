@@ -10,8 +10,8 @@ from PIL import Image
 import torchvision.transforms as transforms
 
 
-def create_input_files(dataset, karpathy_json_path, image_folder, output_folder,
-                       captions_per_image=5, min_word_freq=5, max_len=50, seed=34343):
+def preprocess_and_save_datasets(dataset, karpathy_json_path, image_folder, output_folder,
+                                 captions_per_image=5, min_word_freq=5, max_len=50, seed=34343):
     """
     Preprocesses the images and captions as follows: Each image is resized to 256 by 256 and saved as a part of an h5
     dataset. Each caption is tokenized and punctuations/spaces removed. Then, each word in the caption that appears
