@@ -66,11 +66,11 @@ if __name__ == '__main__':
         train_url = file['train_url'][()].astype(str)
         word_code = file['word_code'][()]
 
-    with h5py.File(TEST_DATA_FILE_NAME, "r") as file:
-        test_cap = file['test_caps'][()]
-        test_imid = file['test_imid'][()]
-        # train_ims = file['train_ims'][()]
-        test_url = file['test_url'][()].astype(str)
+    # with h5py.File(TEST_DATA_FILE_NAME, "r") as file:
+    #     test_cap = file['test_caps'][()]
+    #     test_imid = file['test_imid'][()]
+    #     # train_ims = file['train_ims'][()]
+    #     test_url = file['test_url'][()].astype(str)
 
     word_dict = {}
     for key in word_code.dtype.fields.keys():
