@@ -54,7 +54,6 @@ class Decoder(nn.Module):
 
     def __init__(self, embed_dim, decoder_dim, vocab_size, encoder_dim=2048, dropout=0.5):
         """
-        :param attention_dim: size of attention network
         :param embed_dim: embedding size
         :param decoder_dim: size of decoder's RNN
         :param vocab_size: size of vocabulary

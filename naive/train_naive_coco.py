@@ -18,10 +18,10 @@ Code for Show, Attend, and Tell, adapted from https://github.com/sgrvinod/a-PyTo
 """
 
 # Data parameters
-data_folder = 'data/preprocessed'  # folder with data files saved by create_input_files.py
+data_folder = 'data\\preprocessed'  # folder with data files saved by create_input_files.py
 data_name = 'coco_5_cap_per_img_5_min_word_freq'  # base name shared by data files
-checkpoint_path = 'show_tell/checkpoints'  # path where to save checkpoints
-log_directory = 'show_tell/logs'
+checkpoint_path = 'naive\\checkpoints'  # path where to save checkpoints
+log_directory = 'naive\\logs'
 
 # Model parameters
 emb_dim = 512  # dimension of word embeddings
