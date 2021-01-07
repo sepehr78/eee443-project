@@ -1,0 +1,5 @@
+* We resized image to 256x256 instead of centre crop to 224x224
+* We used ResNet101 instead of VGG19
+* Different split than their paper
+* We used higher img representation dimension (2048 vs 512)
+*

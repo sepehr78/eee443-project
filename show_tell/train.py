@@ -23,10 +23,12 @@ checkpoint_path = 'show_tell/checkpoints'  # path where to save checkpoints
 log_directory = 'show_tell/logs'
 
 # Model parameters
-emb_dim = 512  # dimension of word embeddings
+# emb_dim = 300  # FOR USE WITHOUT GLOVE
+emb_dim = 300  # dimension of word embeddings
 attention_dim = 512  # dimension of attention linear layers
 decoder_dim = 512  # dimension of decoder RNN
 dropout = 0.5
+use_glove = True  # whether to use pre-trained GloVe embedding in decoder
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # sets device for model and PyTorch tensors
 cudnn.benchmark = True  # set to true only if inputs to model are fixed size; otherwise lot of computational overhead
 
@@ -43,10 +45,10 @@ alpha_c = 1.  # regularization parameter for 'doubly stochastic attention', as i
 best_bleu4 = 0.  # BLEU-4 score right now
 print_freq = 100  # print training/validation stats every __ batches
 fine_tune_encoder = False  # fine-tune encoder?
-checkpoint = None  # path to current checkpoint to use, None if none
+checkpoint = None
 
 # visualization params
-log_name = "default"
+log_name = "glove"
 
 
 def main():
@@ -67,7 +69,9 @@ def main():
                                        embed_dim=emb_dim,
                                        decoder_dim=decoder_dim,
                                        vocab_size=len(word_map),
-                                       dropout=dropout)
+                                       dropout=dropout,
+                                       use_glove=use_glove,
+                                       word_map=word_map)
         decoder_optimizer = torch.optim.Adam(params=filter(lambda p: p.requires_grad, decoder.parameters()),
                                              lr=decoder_lr)
         encoder = Encoder()
@@ -78,6 +82,7 @@ def main():
     else:
         checkpoint = torch.load(checkpoint)
         start_epoch = checkpoint['epoch'] + 1
+        print(f"Continuing training from epoch {start_epoch}...")
         epochs_since_improvement = checkpoint['epochs_since_improvement']
         best_bleu4 = checkpoint['bleu-4']
         decoder = checkpoint['decoder']
@@ -153,7 +158,8 @@ def main():
             epochs_since_improvement = 0
 
         # Save checkpoint
-        save_checkpoint(data_name, epoch, epochs_since_improvement, encoder, decoder, encoder_optimizer,
+        checkpoint_name = f"glove_{data_name}" if use_glove else data_name
+        save_checkpoint(checkpoint_name, epoch, epochs_since_improvement, encoder, decoder, encoder_optimizer,
                         decoder_optimizer, recent_bleu4, is_best, checkpoint_path)
 
 

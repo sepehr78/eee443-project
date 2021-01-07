@@ -1,3 +1,4 @@
+from torchtext.vocab import GloVe
 import torch
 from torch import nn
 import torchvision
@@ -87,7 +88,8 @@ class DecoderWithAttention(nn.Module):
     Decoder.
     """
 
-    def __init__(self, attention_dim, embed_dim, decoder_dim, vocab_size, encoder_dim=2048, dropout=0.5):
+    def __init__(self, attention_dim, embed_dim, decoder_dim, vocab_size, encoder_dim=2048, dropout=0.5,
+                 use_glove=False, word_map=None):
         """
         :param attention_dim: size of attention network
         :param embed_dim: embedding size
@@ -95,6 +97,8 @@ class DecoderWithAttention(nn.Module):
         :param vocab_size: size of vocabulary
         :param encoder_dim: feature size of encoded images
         :param dropout: dropout
+        :param use_glove whether to use pre-trained GloVe embedding
+        :param word_map the word map for the training dataset. Only needed if GloVe is to be used
         """
         super(DecoderWithAttention, self).__init__()
 
@@ -108,6 +112,9 @@ class DecoderWithAttention(nn.Module):
         self.attention = Attention(encoder_dim, decoder_dim, attention_dim)  # attention network
 
         self.embedding = nn.Embedding(vocab_size, embed_dim)  # embedding layer
+        self.embedding.weight.data.uniform_(-0.1, 0.1)
+        if use_glove:
+            self.load_glove(word_map)
         self.dropout = nn.Dropout(p=self.dropout)
         self.decode_step = nn.LSTMCell(embed_dim + encoder_dim, decoder_dim, bias=True)  # decoding LSTMCell
         self.init_h = nn.Linear(encoder_dim, decoder_dim)  # linear layer to find initial hidden state of LSTMCell
@@ -121,26 +128,21 @@ class DecoderWithAttention(nn.Module):
         """
         Initializes some parameters with values from the uniform distribution, for easier convergence.
         """
-        self.embedding.weight.data.uniform_(-0.1, 0.1)
         self.fc.bias.data.fill_(0)
         self.fc.weight.data.uniform_(-0.1, 0.1)
 
-    def load_pretrained_embeddings(self, embeddings):
-        """
-        Loads embedding layer with pre-trained embeddings.
-
-        :param embeddings: pre-trained embeddings
-        """
-        self.embedding.weight = nn.Parameter(embeddings)
-
-    def fine_tune_embeddings(self, fine_tune=True):
-        """
-        Allow fine-tuning of embedding layer? (Only makes sense to not-allow if using pre-trained embeddings).
-
-        :param fine_tune: Allow?
-        """
-        for p in self.embedding.parameters():
-            p.requires_grad = fine_tune
+    def load_glove(self, word_map):
+        # load GloVe embedding
+        embedding_glove = GloVe(name='6B', dim=300)
+        num_words_not_in_glove = 0
+        embeddings = self.embedding.weight
+        for word, idx in word_map.items():
+            if word in embedding_glove.itos:
+                embeddings[idx] = embedding_glove[word]
+            else:
+                num_words_not_in_glove += 1
+        embeddings[word_map['<num>']] = embedding_glove['number']
+        self.embedding.weight = nn.Parameter(embeddings.detach())  # reset grad_fn
 
     def init_hidden_state(self, encoder_out):
         """
