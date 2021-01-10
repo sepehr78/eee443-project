@@ -62,6 +62,9 @@ def preprocess_and_save_datasets(dataset, karpathy_json_path, image_folder, outp
             if 'train' in img['filename']:  # only consider training freq
                 if train_val_idx in training_indices:
                     train_word_freq.update(c['tokens'])
+            # for token in c['tokens']:
+            #     if not token.isalpha():
+            #         print("LOMP")
             if len(c['tokens']) <= max_len:
                 captions.append(c['tokens'])  # Update word frequency
 

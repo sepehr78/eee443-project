@@ -7,28 +7,28 @@ from torch import nn
 from torch.nn.utils.rnn import pack_padded_sequence
 from models import Encoder, DecoderWithAttention
 from datasets import *
+from sam import SAM
 from utils import *
 from nltk.translate.bleu_score import corpus_bleu
 from torch.utils.tensorboard import SummaryWriter
-
 
 """
 Code for Show, Attend, and Tell, adapted from https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Image-Captioning
 """
 
 # Data parameters
-data_folder = 'data/saved_output'  # folder with data files saved by create_input_files.py
+data_folder = 'data/saved_output'
 data_name = 'coco_5_cap_per_img_5_min_word_freq'  # base name shared by data files
 checkpoint_path = 'show_tell/checkpoints'  # path where to save checkpoints
 log_directory = 'show_tell/logs'
 
 # Model parameters
-# emb_dim = 300  # FOR USE WITHOUT GLOVE
-emb_dim = 300  # dimension of word embeddings
+use_glove = True  # whether to use pre-trained GloVe embedding in decoder
+use_sam = True  # whether to use SAM optimizer
+emb_dim = 300 if use_glove else 512  # dimension of word embeddings
 attention_dim = 512  # dimension of attention linear layers
 decoder_dim = 512  # dimension of decoder RNN
 dropout = 0.5
-use_glove = True  # whether to use pre-trained GloVe embedding in decoder
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # sets device for model and PyTorch tensors
 cudnn.benchmark = True  # set to true only if inputs to model are fixed size; otherwise lot of computational overhead
 
@@ -40,15 +40,15 @@ batch_size = 32
 workers = 4  # for data-loading; right now, only 1 works with h5py
 encoder_lr = 1e-4  # learning rate for encoder if fine-tuning
 decoder_lr = 4e-4  # learning rate for decoder
-grad_clip = 5.  # clip gradients at an absolute value of
-alpha_c = 1.  # regularization parameter for 'doubly stochastic attention', as in the paper
+grad_clip = None if use_sam else 5.0  # do not clip when using SAM because direction of gradient is important in SAM
+alpha_c = 1.0  # regularization parameter for 'doubly stochastic attention', as in the paper
 best_bleu4 = 0.  # BLEU-4 score right now
-print_freq = 100  # print training/validation stats every __ batches
-fine_tune_encoder = False  # fine-tune encoder?
-checkpoint = None
+print_freq = 100  # print training/validation stats every xx batches
+fine_tune_encoder = True  # fine-tune encoder?
+checkpoint = "show_tell/checkpoints/BEST_checkpoint_glove_coco_5_cap_per_img_5_min_word_freq.pth.tar"
 
 # visualization params
-log_name = "glove"
+log_name = "glove+sam"
 
 
 def main():
@@ -86,13 +86,31 @@ def main():
         epochs_since_improvement = checkpoint['epochs_since_improvement']
         best_bleu4 = checkpoint['bleu-4']
         decoder = checkpoint['decoder']
-        decoder_optimizer = checkpoint['decoder_optimizer']
+        if use_sam:
+            lr = checkpoint['decoder_optimizer'].param_groups[0]['lr']
+            base_optimizer = torch.optim.SGD
+            decoder_optimizer = SAM(filter(lambda p: p.requires_grad, decoder.parameters()), base_optimizer,
+                                    lr=lr, momentum=0.9)
+        else:
+            decoder_optimizer = checkpoint['decoder_optimizer']
         encoder = checkpoint['encoder']
-        encoder_optimizer = checkpoint['encoder_optimizer']
+
+        if use_sam and fine_tune_encoder is True:
+            lr = checkpoint['encoder_optimizer'].param_groups[0]['lr']
+            base_optimizer = torch.optim.SGD
+            encoder_optimizer = SAM(filter(lambda p: p.requires_grad, encoder.parameters()), base_optimizer,
+                                    lr=lr, momentum=0.9)
+        else:
+            encoder_optimizer = checkpoint['encoder_optimizer']
         if fine_tune_encoder is True and encoder_optimizer is None:
             encoder.fine_tune(fine_tune_encoder)
-            encoder_optimizer = torch.optim.Adam(params=filter(lambda p: p.requires_grad, encoder.parameters()),
-                                                 lr=encoder_lr)
+            if use_sam:
+                base_optimizer = torch.optim.SGD
+                encoder_optimizer = SAM(filter(lambda p: p.requires_grad, encoder.parameters()), base_optimizer,
+                                        lr=encoder_lr, momentum=0.9)
+            else:
+                encoder_optimizer = torch.optim.Adam(params=filter(lambda p: p.requires_grad, encoder.parameters()),
+                                                     lr=encoder_lr)
 
     # Move to GPU, if available
     decoder = decoder.to(device)
@@ -141,9 +159,9 @@ def main():
 
         # One epoch's validation
         recent_bleu4, val_loss, val_top5_acc = validate(val_loader=val_loader,
-                                encoder=encoder,
-                                decoder=decoder,
-                                criterion=criterion)
+                                                        encoder=encoder,
+                                                        decoder=decoder,
+                                                        criterion=criterion)
         val_writer.add_scalar('Epoch loss', val_loss, epoch + 1)
         val_writer.add_scalar('Epoch top-5 accuracy', val_top5_acc, epoch + 1)
         val_writer.add_scalar('BLEU-4', recent_bleu4, epoch + 1)
@@ -158,7 +176,11 @@ def main():
             epochs_since_improvement = 0
 
         # Save checkpoint
-        checkpoint_name = f"glove_{data_name}" if use_glove else data_name
+        checkpoint_name = data_name
+        if use_glove:
+            checkpoint_name = f"glove_{checkpoint_name}"
+        if use_sam:
+            checkpoint_name = f"sam_{checkpoint_name}"
         save_checkpoint(checkpoint_name, epoch, epochs_since_improvement, encoder, decoder, encoder_optimizer,
                         decoder_optimizer, recent_bleu4, is_best, checkpoint_path)
 
@@ -187,16 +209,16 @@ def train(train_loader, encoder, decoder, criterion, encoder_optimizer, decoder_
     start = time.time()
 
     # Batches
-    for i, (imgs, caps, caplens) in enumerate(train_loader):
+    for i, (og_imgs, caps, caplens) in enumerate(train_loader):
         data_time.update(time.time() - start)
 
         # Move to GPU, if available
-        imgs = imgs.to(device)
+        og_imgs = og_imgs.to(device)
         caps = caps.to(device)
         caplens = caplens.to(device)
 
         # Forward prop.
-        imgs = encoder(imgs)
+        imgs = encoder(og_imgs)
         scores, caps_sorted, decode_lengths, alphas, sort_ind = decoder(imgs, caps, caplens)
 
         # Since we decoded starting with <start>, the targets are all words after <start>, up to <end>
@@ -226,9 +248,29 @@ def train(train_loader, encoder, decoder, criterion, encoder_optimizer, decoder_
                 clip_gradient(encoder_optimizer, grad_clip)
 
         # Update weights
-        decoder_optimizer.step()
-        if encoder_optimizer is not None:
-            encoder_optimizer.step()
+        if use_sam:
+            decoder_optimizer.first_step(zero_grad=True)
+            if encoder_optimizer is not None:
+                encoder_optimizer.first_step(zero_grad=True)
+
+            # perform second pass needed for SAM
+            imgs = encoder(og_imgs)
+            scores, caps_sorted, decode_lengths, alphas, sort_ind = decoder(imgs, caps, caplens)
+            targets = caps_sorted[:, 1:]
+            scores = pack_padded_sequence(scores, decode_lengths, batch_first=True).data
+            targets = pack_padded_sequence(targets, decode_lengths, batch_first=True).data
+            second_loss = criterion(scores, targets)
+            second_loss += alpha_c * ((1. - alphas.sum(dim=1)) ** 2).mean()
+            second_loss.backward()
+
+            # perform second update
+            decoder_optimizer.second_step(zero_grad=True)
+            if encoder_optimizer is not None:
+                encoder_optimizer.second_step(zero_grad=True)
+        else:
+            decoder_optimizer.step()
+            if encoder_optimizer is not None:
+                encoder_optimizer.step()
 
         # Keep track of metrics
         top5 = accuracy(scores, targets, 5)
@@ -311,7 +353,7 @@ def validate(val_loader, encoder, decoder, criterion):
             # pack_padded_sequence is an easy trick to do this
             scores_copy = scores.clone()
             scores = pack_padded_sequence(scores, decode_lengths, batch_first=True).data
-            targets = pack_padded_sequence(targets, decode_lengths, batch_first=True).data  # TODO CHEKC IF THIS IS CORRECT
+            targets = pack_padded_sequence(targets, decode_lengths, batch_first=True).data  # TODO PRAY THIS IS CORRECT
 
             # Calculate loss
             loss = criterion(scores, targets)

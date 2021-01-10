@@ -9,47 +9,37 @@ import torch.nn.functional as F
 from tqdm import tqdm
 
 # Parameters
-data_folder = '/media/ssd/caption data'  # folder with data files saved by create_input_files.py
-data_name = 'coco_5_cap_per_img_5_min_word_freq'  # base name shared by data files
-checkpoint = '../BEST_checkpoint_coco_5_cap_per_img_5_min_word_freq.pth.tar'  # model checkpoint
-word_map_file = '/media/ssd/caption data/WORDMAP_coco_5_cap_per_img_5_min_word_freq.json'  # word map, ensure it's the same the data was encoded with and the model was trained with
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # sets device for model and PyTorch tensors
-cudnn.benchmark = True  # set to true only if inputs to model are fixed size; otherwise lot of computational overhead
+data_folder = 'data/saved_output'
+data_name = 'coco_5_cap_per_img_5_min_word_freq'
+checkpoint = 'show_tell/checkpoints/BEST_checkpoint_coco_5_cap_per_img_5_min_word_freq.pth.tar'
+word_map_file = 'data/saved_output/WORDMAP_coco_5_cap_per_img_5_min_word_freq.json'
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+cudnn.benchmark = True
 
-# Load model
-checkpoint = torch.load(checkpoint)
-decoder = checkpoint['decoder']
-decoder = decoder.to(device)
-decoder.eval()
-encoder = checkpoint['encoder']
-encoder = encoder.to(device)
-encoder.eval()
+step_threshold = 50  # stop caption generation if longer than this threshold
 
-# Load word map (word2ix)
-with open(word_map_file, 'r') as j:
-    word_map = json.load(j)
-rev_word_map = {v: k for k, v in word_map.items()}
-vocab_size = len(word_map)
-
-# Normalization transform
+# Normalization transform needed because the encoder (ResNet-101) was pre-trained on ImageNet
 normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                  std=[0.229, 0.224, 0.225])
 
 
-def evaluate(beam_size):
+def test_model(encoder, decoder, beam_size):
     """
-    Evaluation
+    Tests given encoder and decoder on the test dataset
 
     :param beam_size: beam size at which to generate captions for evaluation
-    :return: BLEU-4 score
+    :return: BLEU-1, BLEU-2, BLEU-3, BLEU-4 scores
     """
+
+    # Load dict mapping word to index
+    with open(word_map_file, 'r') as j:
+        word_map = json.load(j)
+    rev_word_map = {v: k for k, v in word_map.items()}
+    vocab_size = len(word_map)
     # DataLoader
     loader = torch.utils.data.DataLoader(
-        CocoCaptionDataset(data_folder, data_name, 'TEST', transform=transforms.Compose([normalize])),
-        batch_size=1, shuffle=True, num_workers=1, pin_memory=True)
-
-    # TODO: Batched Beam Search
-    # Therefore, do not use a batch_size greater than 1 - IMPORTANT!
+        CocoCaptionDataset(data_folder, data_name, "TEST", transforms=transforms.Compose([normalize])),
+        batch_size=1, shuffle=False, num_workers=4, pin_memory=True)
 
     # Lists to store references (true captions), and hypothesis (prediction) for each image
     # If for n images, we have n hypotheses, and references a, b, c... for each image, we need -
@@ -58,8 +48,7 @@ def evaluate(beam_size):
     hypotheses = list()
 
     # For each image
-    for i, (image, caps, caplens, allcaps) in enumerate(
-            tqdm(loader, desc="EVALUATING AT BEAM SIZE " + str(beam_size))):
+    for i, (image, caps, caplens, allcaps) in enumerate(tqdm(loader, f"Testing using beam size {beam_size}")):
 
         k = beam_size
 
@@ -97,7 +86,6 @@ def evaluate(beam_size):
 
         # s is a number less than or equal to k, because sequences are removed from this process once they hit <end>
         while True:
-
             embeddings = decoder.embedding(k_prev_words).squeeze(1)  # (s, embed_dim)
 
             awe, _ = decoder.attention(encoder_out, h)  # (s, encoder_dim), (s, num_pixels)
@@ -121,8 +109,8 @@ def evaluate(beam_size):
                 top_k_scores, top_k_words = scores.view(-1).topk(k, 0, True, True)  # (s)
 
             # Convert unrolled indices to actual indices of scores
-            prev_word_inds = top_k_words / vocab_size  # (s)
-            next_word_inds = top_k_words % vocab_size  # (s)
+            prev_word_inds = (top_k_words / vocab_size).long()  # (s)
+            next_word_inds = (top_k_words % vocab_size).long()  # (s)
 
             # Add new words to sequences
             seqs = torch.cat([seqs[prev_word_inds], next_word_inds.unsqueeze(1)], dim=1)  # (s, step+1)
@@ -148,8 +136,7 @@ def evaluate(beam_size):
             top_k_scores = top_k_scores[incomplete_inds].unsqueeze(1)
             k_prev_words = next_word_inds[incomplete_inds].unsqueeze(1)
 
-            # Break if things have been going on too long
-            if step > 50:
+            if step > step_threshold:
                 break
             step += 1
 
@@ -169,11 +156,28 @@ def evaluate(beam_size):
         assert len(references) == len(hypotheses)
 
     # Calculate BLEU-4 scores
-    bleu4 = corpus_bleu(references, hypotheses)
+    bleu1 = corpus_bleu(references, hypotheses, weights=(1, 0, 0, 0))
+    bleu2 = corpus_bleu(references, hypotheses, weights=(0.5, 0.5, 0, 0))
+    bleu3 = corpus_bleu(references, hypotheses, weights=(0.33, 0.33, 0.33, 0))
+    bleu4 = corpus_bleu(references, hypotheses, weights=(0.25, 0.25, 0.25, 0.25))
 
-    return bleu4
+    return bleu1, bleu2, bleu3, bleu4
 
 
 if __name__ == '__main__':
     beam_size = 1
-    print("\nBLEU-4 score @ beam size of %d is %.4f." % (beam_size, evaluate(beam_size)))
+
+    # Load model
+    checkpoint = torch.load(checkpoint)
+    decoder = checkpoint['decoder']
+    decoder = decoder.to(device)
+    decoder.eval()
+    encoder = checkpoint['encoder']
+    encoder = encoder.to(device)
+    encoder.eval()
+
+    bleu1, bleu2, bleu3, bleu4 = test_model(encoder, decoder, beam_size)
+    print(f"BLEU-1 is {bleu1}")
+    print(f"BLEU-2 is {bleu2}")
+    print(f"BLEU-3 is {bleu3}")
+    print(f"BLEU-4 is {bleu4}")
