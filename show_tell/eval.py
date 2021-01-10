@@ -136,7 +136,11 @@ def test_model(encoder, decoder, beam_size):
             top_k_scores = top_k_scores[incomplete_inds].unsqueeze(1)
             k_prev_words = next_word_inds[incomplete_inds].unsqueeze(1)
 
-            if step > step_threshold and len(complete_seqs_scores) > 0:
+            if step > step_threshold:
+                if len(complete_seqs_scores) == 0:
+                    # finish the best scoring incomplete seq so far
+                    i = np.argmax(top_k_scores)
+                    complete_seqs_scores.append(top_k_scores[i])
                 break
             step += 1
 
