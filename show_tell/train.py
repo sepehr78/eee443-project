@@ -330,8 +330,6 @@ def validate(val_loader, encoder, decoder, criterion):
     references = list()  # references (true captions) for calculating BLEU-4 score
     hypotheses = list()  # hypotheses (predictions)
 
-    # explicitly disable gradient calculation to avoid CUDA memory error
-    # solves the issue #57
     with torch.no_grad():
         # Batches
         for i, (imgs, caps, caplens, allcaps) in enumerate(val_loader):

@@ -11,11 +11,11 @@ from tqdm import tqdm
 # Parameters
 data_folder = 'data/saved_output'
 data_name = 'coco_5_cap_per_img_5_min_word_freq'
-checkpoint = 'show_tell/checkpoints/BEST_checkpoint_coco_5_cap_per_img_5_min_word_freq.pth.tar'
+checkpoint = 'show_tell/checkpoints/BEST_checkpoint_glove_coco_5_cap_per_img_5_min_word_freq.pth.tar'
 word_map_file = 'data/saved_output/WORDMAP_coco_5_cap_per_img_5_min_word_freq.json'
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 cudnn.benchmark = True
-
+print("GLOOVE")
 step_threshold = 50  # stop caption generation if longer than this threshold
 
 # Normalization transform needed because the encoder (ResNet-101) was pre-trained on ImageNet
@@ -136,11 +136,11 @@ def test_model(encoder, decoder, beam_size):
             top_k_scores = top_k_scores[incomplete_inds].unsqueeze(1)
             k_prev_words = next_word_inds[incomplete_inds].unsqueeze(1)
 
-            if step > step_threshold:
+            if step > step_threshold and len(complete_seqs_scores) > 0:
                 break
             step += 1
 
-        i = complete_seqs_scores.index(max(complete_seqs_scores))
+        i = np.argmax(complete_seqs_scores)
         seq = complete_seqs[i]
 
         # References
@@ -176,7 +176,8 @@ if __name__ == '__main__':
     encoder = encoder.to(device)
     encoder.eval()
 
-    bleu1, bleu2, bleu3, bleu4 = test_model(encoder, decoder, beam_size)
+    with torch.no_grad():
+        bleu1, bleu2, bleu3, bleu4 = test_model(encoder, decoder, beam_size)
     print(f"BLEU-1 is {bleu1}")
     print(f"BLEU-2 is {bleu2}")
     print(f"BLEU-3 is {bleu3}")
