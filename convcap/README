@@ -1,1 +1,7 @@
-readme
+READ ME
+
+Run train.py.
+
+Before that preprocessed data should be in the './prep_data/' folder.
+
+Then it is good2go.
