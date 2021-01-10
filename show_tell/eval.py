@@ -139,8 +139,9 @@ def test_model(encoder, decoder, beam_size):
             if step > step_threshold:
                 if len(complete_seqs_scores) == 0:
                     # finish the best scoring incomplete seq so far
-                    i = np.argmax(top_k_scores)
+                    i = torch.argmax(top_k_scores)
                     complete_seqs_scores.append(top_k_scores[i])
+                    complete_seqs.append(seqs[i].tolist())
                 break
             step += 1
 
