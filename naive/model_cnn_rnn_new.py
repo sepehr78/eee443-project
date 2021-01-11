@@ -10,18 +10,16 @@ class Encoder(nn.Module):
         super(Encoder, self).__init__()
         self.enc_image_size = encoded_image_size
 
-        resnet = torchvision.models.vgg16(pretrained=True)  # pretrained ImageNet ResNet-101
+        resnet = torchvision.models.resnet101(pretrained=True)  # pretrained ImageNet ResNet-101
 
         # Remove linear and pool layers (since we're not doing classification)
         # modules = list(resnet.children())[:-1]  # for resnet101
-        modules = list(resnet.classifier.children())[:-1]  # for vgg
+        modules = list(resnet.children())[:-1]  # for vgg
 
-        self.resnet = resnet  # nn.Sequential(*modules)
-        self.resnet.classifier = nn.Sequential(
-            *modules)
+        self.resnet = nn.Sequential(*modules)
 
         # Resize image to fixed size to allow input images of variable size
-        # self.adaptive_pool = nn.AdaptiveAvgPool2d((encoded_image_size, encoded_image_size))
+        self.adaptive_pool = nn.AdaptiveAvgPool2d((encoded_image_size, encoded_image_size))
 
         self.fine_tune()
 
@@ -33,8 +31,8 @@ class Encoder(nn.Module):
         :return: encoded images
         """
         out = self.resnet(images)  # (batch_size, 2048, image_size/32, image_size/32)
-        #out = self.adaptive_pool(out)  # (batch_size, 2048, encoded_image_size, encoded_image_size)
-        #out = out.permute(0, 2, 3, 1)  # (batch_size, encoded_image_size, encoded_image_size, 2048)
+        out = self.adaptive_pool(out)  # (batch_size, 2048, encoded_image_size, encoded_image_size)
+        out = out.permute(0, 2, 3, 1)  # (batch_size, encoded_image_size, encoded_image_size, 2048)
         return out
 
     def fine_tune(self, fine_tune=True):
@@ -56,7 +54,7 @@ class Decoder(nn.Module):
     Decoder.
     """
 
-    def __init__(self, embed_dim, decoder_dim, vocab_size, encoder_dim=4096, dropout=0.5):
+    def __init__(self, embed_dim, decoder_dim, vocab_size, encoder_dim=2048, dropout=0.5):
         """
         :param embed_dim: embedding size
         :param decoder_dim: size of decoder's RNN

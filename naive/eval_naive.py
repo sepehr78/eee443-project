@@ -9,10 +9,10 @@ import torch.nn.functional as F
 from tqdm import tqdm
 
 # Parameters
-data_folder = 'data/saved_output'
+data_folder = 'data/preprocessed'
 data_name = 'coco_5_cap_per_img_5_min_word_freq'
 checkpoint = 'naive/checkpoints/BEST_checkpoint_coco_5_cap_per_img_5_min_word_freq.pth.tar'
-word_map_file = 'data/saved_output/WORDMAP_coco_5_cap_per_img_5_min_word_freq.json'
+word_map_file = 'data/preprocessed/WORDMAP_coco_5_cap_per_img_5_min_word_freq.json'
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 cudnn.benchmark = True
 print("VAJIF")
@@ -39,7 +39,7 @@ def test_model(encoder, decoder, beam_size):
     # DataLoader
     loader = torch.utils.data.DataLoader(
         CocoCaptionDataset(data_folder, data_name, "TEST", transforms=transforms.Compose([normalize])),
-        batch_size=1, shuffle=False, num_workers=4, pin_memory=True)
+        batch_size=1, shuffle=False, num_workers=0, pin_memory=True)
 
     # Lists to store references (true captions), and hypothesis (prediction) for each image
     # If for n images, we have n hypotheses, and references a, b, c... for each image, we need -
@@ -89,8 +89,7 @@ def test_model(encoder, decoder, beam_size):
         while True:
             embeddings = decoder.embedding(k_prev_words).squeeze(1)  # (s, embed_dim)
 
-
-            h, c = decoder.decode_step(torch.cat([embeddings, awe], dim=1), (h, c))  # (s, decoder_dim)
+            h, c = decoder.decode_step(torch.cat([embeddings, encoder_out.sum(dim=1)], dim=1), (h, c))  # (s, decoder_dim)
 
             scores = decoder.fc(h)  # (s, vocab_size)
             scores = F.log_softmax(scores, dim=1)
