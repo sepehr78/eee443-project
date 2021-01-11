@@ -13,8 +13,7 @@ class Encoder(nn.Module):
         resnet = torchvision.models.resnet101(pretrained=True)  # pretrained ImageNet ResNet-101
 
         # Remove linear and pool layers (since we're not doing classification)
-        # modules = list(resnet.children())[:-1]  # for resnet101
-        modules = list(resnet.children())[:-1]  # for vgg
+        modules = list(resnet.children())[:-2]  # for vgg
 
         self.resnet = nn.Sequential(*modules)
 
