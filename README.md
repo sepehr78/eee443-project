@@ -10,3 +10,6 @@
 
 Nice optimizer:
 * https://github.com/davda54/sam
+
+Models are included in the following link:
+https://drive.google.com/drive/folders/1EfcqQ0tsOArqxL-o3aStwtm56IaAy0CP
