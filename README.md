@@ -2,16 +2,5 @@
 **Brief summary of the project:**
 In  this  work,  we  experimented  with  various  image  captioning  architectures  for  encoding  images and decoding their captions, including a simple CNN and RNN model, a model with attention,  and a fully convolu-tional  model. We train and test our models on the provided COCO2014 dataset, discussing in detail both the image and caption pre-processing needed. We then discuss our successes and shortcomings and compare our results with those in the literature. We were able to observe that the image captioning model with attention not only provided the best results out of all the other tested models, but it also outperformed the paper that it is based on.
 
-**Nice articles on image captioning:**
-* https://data-flair.training/blogs/python-based-project-image-caption-generator-cnn/
-* https://towardsdatascience.com/image-captioning-with-keras-teaching-computers-to-describe-pictures-c88a46a311b8
-* https://machinelearningmastery.com/develop-a-deep-learning-caption-generation-model-in-python/
-* https://github.com/LuoweiZhou/VLP
-* https://github.com/ruotianluo/ImageCaptioning.pytorch
-* https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Image-Captioning
-
-Nice optimizer:
-* https://github.com/davda54/sam
-
-Models are included in the following link:
+Our trained models are included in the following link:
 https://drive.google.com/drive/folders/1EfcqQ0tsOArqxL-o3aStwtm56IaAy0CP
