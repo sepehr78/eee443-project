@@ -1,8 +1,6 @@
 import torch
 import os
 
-os.environ["PATH"] = '/home/sepehr/texlive/2020/bin/x86_64-linux:' + os.environ["PATH"]  # DELETE IF NOT SEPEHR
-
 import torch.nn.functional as F
 import numpy as np
 import json
@@ -15,7 +13,7 @@ from PIL import Image
 import seaborn as sns
 
 sns.set(style='whitegrid')
-use_latex = True
+use_latex = False
 tex_fonts = {
     # Use LaTeX to write all text
     "text.usetex": True,

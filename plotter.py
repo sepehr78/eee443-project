@@ -1,14 +1,12 @@
 import os
 
-os.environ["PATH"] = '/home/sepehr/texlive/2020/bin/x86_64-linux:' + os.environ["PATH"]  # DELETE IF NOT SEPEHR
-
 import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
 sns.set(style='whitegrid')
-use_latex = True
+use_latex = False
 tex_fonts = {
     # Use LaTeX to write all text
     "text.usetex": True,
