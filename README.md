@@ -31,7 +31,7 @@ https://1drv.ms/u/s!Av7-zYTFLro0q8kG8uAtUL25qEpQdA?e=qYsSgn
 * Naive CNN+RNN -> /naive
 * Attention model w/ and w/o GloVe -> /show_tell
 * Convolutional captioning model -> /convcap-REFINED
-* 
+
 **To train any of our models**
 4. Open the respective model's training script.
 6. Ensure that the data path is correctly set to where you downloaded the pre-processed dataset (link above).
