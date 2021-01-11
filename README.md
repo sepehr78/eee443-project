@@ -33,6 +33,6 @@ https://1drv.ms/u/s!Av7-zYTFLro0q8kG8uAtUL25qEpQdA?e=qYsSgn
 * Convolutional captioning model -> /convcap-REFINED
 
 **To train any of our models**
-4. Open the respective model's training script.
-6. Ensure that the data path is correctly set to where you downloaded the pre-processed dataset (link above).
-7. The script automatically runs on GPU if it detects any. 
+1. Open the respective model's training script.
+2. Ensure that the data path is correctly set to where you downloaded the pre-processed dataset (link above).
+3. The script automatically runs on GPU if it detects any. 
