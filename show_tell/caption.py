@@ -1,4 +1,8 @@
 import torch
+import os
+
+os.environ["PATH"] = '/home/sepehr/texlive/2020/bin/x86_64-linux:' + os.environ["PATH"]  # DELETE IF NOT SEPEHR
+
 import torch.nn.functional as F
 import numpy as np
 import json
@@ -8,6 +12,17 @@ import matplotlib.cm as cm
 import skimage.transform
 import argparse
 from PIL import Image
+import seaborn as sns
+
+sns.set(style='whitegrid')
+use_latex = True
+tex_fonts = {
+    # Use LaTeX to write all text
+    "text.usetex": True,
+    "font.family": "serif"
+}
+if use_latex:
+    plt.rcParams.update(tex_fonts)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 checkpoint = 'show_tell/checkpoints/BEST_checkpoint_coco_5_cap_per_img_5_min_word_freq.pth.tar'
@@ -147,7 +162,7 @@ def caption_image_beam_search(encoder, decoder, image_path, word_map, beam_size=
     return seq, alphas, np.flip(complete_seqs[np.argsort(complete_seqs_scores)])
 
 
-def visualize_att(image_path, seq, alphas, rev_word_map, file_name, smooth=True):
+def visualize_att(image_path, seq, alphas, rev_word_map, file_name, smooth=False):
     """
     Visualizes caption with weights at every word.
 
@@ -160,26 +175,31 @@ def visualize_att(image_path, seq, alphas, rev_word_map, file_name, smooth=True)
     :param smooth: smooth weights?
     """
     image = Image.open(image_path)
-    image = image.resize([14 * 24, 14 * 24], Image.LANCZOS)
+    image = image.resize([1024, 1024], Image.LANCZOS)
 
     words = [rev_word_map[ind] for ind in seq]
 
-    for t in range(len(words)):
+    fig = plt.figure(figsize=(13, 9))
+    for t, word in enumerate(words):
         if t > 50:
             break
-        plt.subplot(np.ceil(len(words) / 5.), 5, t + 1)
-
-        plt.text(0, 1, '%s' % (words[t]), color='black', backgroundcolor='white', fontsize=12)
-        plt.imshow(image)
+        ax = fig.add_subplot(np.ceil(len(words) / 12.), 12, t + 1)
+        # plt.subplot(1, len(words), t + 1)
+        if use_latex and word == '<start>':
+            word = r'$<$start$>$'
+        if use_latex and word == '<end>':
+            word = r'$<$end$>$'
+        ax.text(0, 1, word, color='black', backgroundcolor='white', fontsize=12)
+        ax.imshow(image, aspect="auto")
         current_alpha = alphas[t, :]
         if smooth:
             alpha = skimage.transform.pyramid_expand(current_alpha.numpy(), upscale=24, sigma=8)
         else:
-            alpha = skimage.transform.resize(current_alpha.numpy(), [14 * 24, 14 * 24])
+            alpha = skimage.transform.resize(current_alpha.numpy(), [1024, 1024])
         if t == 0:
-            plt.imshow(alpha, alpha=0)
+            ax.imshow(alpha, alpha=0)
         else:
-            plt.imshow(alpha, alpha=0.8)
+            ax.imshow(alpha, alpha=0.8)
         plt.set_cmap(cm.Greys_r)
         plt.axis('off')
     plt.tight_layout()
@@ -195,7 +215,7 @@ def print_each_seq(complete_seqs, rev_word_map):
 
 
 if __name__ == '__main__':
-    img_path = "test_img.jpg"
+    img_path = "show_tell/img/van.jpg"
     beam_size = 5
 
     # Load model
@@ -218,4 +238,4 @@ if __name__ == '__main__':
 
     print_each_seq(complete_seqs, rev_word_map)
     # Visualize caption and attention of best sequence
-    visualize_att(img_path, seq, alphas, rev_word_map, "cat")
+    visualize_att(img_path, seq, alphas, rev_word_map, "van")

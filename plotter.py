@@ -28,7 +28,8 @@ def plot_val_bleu(file_paths, names, file_name):
 
     epoch_arr = np.arange(1, min_epoch + 1)
     for data, label in zip(data_list, names):
-        plt.plot(epoch_arr, data[:min_epoch], '-o', label=label)
+        plt.plot(epoch_arr, 100*data[:min_epoch], '-o', label=label)
+    plt.ylim([15, 25])
     plt.ylabel("Validation BLEU-4 score")
     plt.xlabel("Epoch")
     plt.legend()
@@ -54,6 +55,7 @@ def plot_acc(train_file_paths, val_file_paths, names, file_name):
     for train_data, val_data, label in zip(train_data_list, val_data_list, names):
         plt.plot(epoch_arr, train_data[:min_epoch], '-o', label=f"{label} training")
         plt.plot(epoch_arr, val_data[:min_epoch], '-v', label=f"{label} validation")
+    plt.ylim([60, 100])
     plt.ylabel(r"Top-5 accuracy (\%)")
     plt.xlabel("Epoch")
     plt.legend()
@@ -94,10 +96,18 @@ if __name__ == '__main__':
     # plot_acc(train_paths, val_paths, names, file_name)
     # plt.show()
 
-    train_paths = ["plotting_csv/attend_train_loss.csv", "plotting_csv/attend_glove_train_loss.csv"]
-    val_paths = ["plotting_csv/attend_val_loss.csv", "plotting_csv/attend_glove_val_loss.csv"]
+    # train_paths = ["plotting_csv/resnet_train_epoch_loss.csv", "plotting_csv/inception_train_epoch_loss.csv"]
+    # val_paths = ["plotting_csv/resnet_val_epoch_loss.csv", "plotting_csv/inception_val_epoch_loss.csv"]
+    # names = ["ResNet", "Inception"]
+    # file_name = "naive_loss"
+    # plot_loss(train_paths, val_paths, names, file_name)
+    # plt.show()
+
+    file_paths = ["plotting_csv/attend_bleu.csv", "plotting_csv/attend_glove_bleu.csv"]
     names = ["GloVeless", "GloVe"]
-    file_name = "attend_loss"
-    plot_loss(train_paths, val_paths, names, file_name)
+    file_name = "attend_bleu"
+    plot_val_bleu(file_paths, names, file_name)
     plt.show()
+
+
 

@@ -44,7 +44,7 @@ grad_clip = None if use_sam else 5.0  # do not clip when using SAM because direc
 alpha_c = 1.0  # regularization parameter for 'doubly stochastic attention', as in the paper
 best_bleu4 = 0.  # BLEU-4 score right now
 print_freq = 100  # print training/validation stats every xx batches
-fine_tune_encoder = True  # fine-tune encoder?
+fine_tune_encoder = False  # fine-tune encoder?
 checkpoint = "show_tell/checkpoints/BEST_checkpoint_glove_coco_5_cap_per_img_5_min_word_freq.pth.tar"
 
 # visualization params
@@ -64,7 +64,24 @@ def main():
         word_map = json.load(j)
 
     # Initialize / load checkpoint
-    if checkpoint is None:
+    if use_sam:
+        decoder = DecoderWithAttention(attention_dim=attention_dim,
+                                       embed_dim=emb_dim,
+                                       decoder_dim=decoder_dim,
+                                       vocab_size=len(word_map),
+                                       dropout=dropout,
+                                       use_glove=use_glove,
+                                       word_map=word_map)
+        base_optimizer = torch.optim.SGD
+        decoder_optimizer = SAM(filter(lambda p: p.requires_grad, decoder.parameters()), base_optimizer,
+                                lr=decoder_lr, momentum=0.9)
+
+        checkpoint = torch.load(checkpoint)
+        encoder = checkpoint['encoder']
+        encoder_optimizer = None
+        print("Loading best encoder but random decoder and using SAM...")
+
+    elif checkpoint is None:
         decoder = DecoderWithAttention(attention_dim=attention_dim,
                                        embed_dim=emb_dim,
                                        decoder_dim=decoder_dim,
