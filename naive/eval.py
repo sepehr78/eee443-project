@@ -11,11 +11,11 @@ from tqdm import tqdm
 # Parameters
 data_folder = 'data/saved_output'
 data_name = 'coco_5_cap_per_img_5_min_word_freq'
-checkpoint = 'show_tell/checkpoints/BEST_checkpoint_glove_coco_5_cap_per_img_5_min_word_freq.pth.tar'
+checkpoint = 'naive/checkpoints/BEST_checkpoint_coco_5_cap_per_img_5_min_word_freq.pth.tar'
 word_map_file = 'data/saved_output/WORDMAP_coco_5_cap_per_img_5_min_word_freq.json'
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 cudnn.benchmark = True
-print("GLOOVE")
+print("VAJIF")
 step_threshold = 50  # stop caption generation if longer than this threshold
 
 # Normalization transform needed because the encoder (ResNet-101) was pre-trained on ImageNet
@@ -57,6 +57,7 @@ def test_model(encoder, decoder, beam_size):
 
         # Encode
         encoder_out = encoder(image)  # (1, enc_image_size, enc_image_size, encoder_dim)
+        encoder_out.view(1, -1, 2048)  # FIX THIS VAJIFFFFFFFFF
         enc_image_size = encoder_out.size(1)
         encoder_dim = encoder_out.size(3)
 
@@ -88,10 +89,6 @@ def test_model(encoder, decoder, beam_size):
         while True:
             embeddings = decoder.embedding(k_prev_words).squeeze(1)  # (s, embed_dim)
 
-            awe, _ = decoder.attention(encoder_out, h)  # (s, encoder_dim), (s, num_pixels)
-
-            gate = decoder.sigmoid(decoder.f_beta(h))  # gating scalar, (s, encoder_dim)
-            awe = gate * awe
 
             h, c = decoder.decode_step(torch.cat([embeddings, awe], dim=1), (h, c))  # (s, decoder_dim)
 
@@ -170,7 +167,7 @@ def test_model(encoder, decoder, beam_size):
 
 
 if __name__ == '__main__':
-    beam_size = 3
+    beam_size = 1
 
     # Load model
     checkpoint = torch.load(checkpoint)
