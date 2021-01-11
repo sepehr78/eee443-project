@@ -29,8 +29,8 @@ https://1drv.ms/u/s!Av7-zYTFLro0q8kG8uAtUL25qEpQdA?e=qYsSgn
 
 **Model and code directory mapping**
 * Naive CNN+RNN -> /naive
-* Attention model w/ and w/o GloVe -> /show_tell
-* Convolutional captioning model -> /convcap-REFINED
+* Attention model w/ and w/o GloVe -> /show_tell (code based on https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Image-Captioning)
+* Convolutional captioning model -> /convcap-REFINED (code based on https://github.com/aditya12agd5/convcap)
 
 **To train any of our models**
 1. Open the respective model's training script.
